@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"create_functions_bucket","Source":"./modules/buckets/function_code","Dir":"modules/buckets/function_code"},{"Key":"deploy_functions","Source":"./modules/functions","Dir":"modules/functions"},{"Key":"get_nba_games","Source":"./modules/functions/getNbaGames","Dir":"modules/functions/getNbaGames"},{"Key":"","Source":"","Dir":"."}]}
