@@ -20,13 +20,22 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"io/ioutil"
+	"math"
 	"net/http"
-	"os"
 	"regexp"
 	"time"
 
 	"github.com/spf13/cobra"
 )
+
+func iterativeDigitsCount(number int) int {
+	count := 0
+	for number != 0 {
+		number /= 10
+		count += 1
+	}
+	return count
+}
 
 // gamesCmd represents the games command
 var gamesCmd = &cobra.Command{
@@ -55,6 +64,34 @@ var gamesCmd = &cobra.Command{
 		blue := color.New(color.FgBlue).SprintFunc()
 		magenta := color.New(color.FgMagenta).SprintFunc()
 
+		var longestTimeString int32 = 0
+
+		var longestHomeTeamName int32 = 0
+		var longestAwayTeamName int32 = 0
+
+		var largestHomeScoreDigits int32 = 0
+		var largestAwayScoreDigits int32 = 0
+
+		for _, item := range responseJSON {
+			var timeString = item.Time
+			if item.State == "upcoming" {
+				t, _ := time.Parse(time.RFC3339, item.Time)
+				timeString = t.In(time.Now().Location()).Format(time.Kitchen)
+			}
+			longestTimeString = int32(math.Max(float64(len(timeString)), float64(longestTimeString)))
+
+			longestHomeTeamName = int32(math.Max(float64(len(item.HomeTeam.Name)), float64(longestHomeTeamName)))
+			longestAwayTeamName = int32(math.Max(float64(len(item.AwayTeam.Name)), float64(longestAwayTeamName)))
+
+			largestHomeScoreDigits = int32(math.Max(
+				float64(iterativeDigitsCount(int(item.HomeTeam.Points))),
+				float64(largestHomeScoreDigits)),
+			)
+			largestAwayScoreDigits = int32(math.Max(
+				float64(iterativeDigitsCount(int(item.AwayTeam.Points))),
+				float64(largestAwayScoreDigits)),
+			)
+		}
 		for _, item := range responseJSON {
 			var timeString = item.Time
 			if item.State == "upcoming" {
@@ -79,19 +116,19 @@ var gamesCmd = &cobra.Command{
 			} else if item.State == "finished" {
 				timeStringColor = yellow
 			}
-
-
-			fmt.Fprintf(
-				os.Stdout,
-				"%s: %s %s @ %s %s\n",
-				timeStringColor(timeString),
-				item.AwayTeam.Name,
-				awayScoreColor(item.AwayTeam.Points),
-				homeScoreColor(item.HomeTeam.Points),
-				item.HomeTeam.Name,
+			
+			fmt.Printf(
+				//os.Stdout,
+				"%s %s %s %s @ %s %s %s\n",
+				timeStringColor(fmt.Sprintf(fmt.Sprintf("%%-%ds", longestTimeString), timeString)),
+				fmt.Sprintf(fmt.Sprintf("%%%ds", longestAwayTeamName), item.AwayTeam.Name),
+				fmt.Sprintf("%-5v", "(" + item.AwayTeam.Record + ")"),
+				awayScoreColor(fmt.Sprintf(fmt.Sprintf("%%%dv", largestAwayScoreDigits), item.AwayTeam.Points)),
+				homeScoreColor(fmt.Sprintf(fmt.Sprintf("%%-%dv", largestHomeScoreDigits), item.HomeTeam.Points)),
+				fmt.Sprintf(fmt.Sprintf("%%-%ds", longestHomeTeamName), item.HomeTeam.Name),
+				fmt.Sprintf("%-5v", "(" + item.HomeTeam.Record + ")"),
 			)
 		}
-
 	},
 }
 

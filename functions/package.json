@@ -26,6 +26,7 @@
     "@google-cloud/functions": "^1.2.0",
     "axios": "^0.24.0",
     "cheerio": "^1.0.0-rc.10",
+    "got": "^11.8.2",
     "luxon": "^2.0.2"
   }
 }

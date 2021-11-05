@@ -1,5 +1,5 @@
 import {Request, Response} from "express";
-import axios from "axios";
+import got from "got";
 import cheerio, {Element, Cheerio} from "cheerio";
 import {DateTime} from "luxon";
 
@@ -36,7 +36,7 @@ const getGameDataFromGameHtml = (node: Cheerio<Element>): Omit<GameData, 'state'
     let time = node.find('a p').text()
     console.log('time', time) //eslint-disable-line
     if (time.includes("GMT")) {
-        const timeNoGmt = time.replace(" GMT", "")
+        const timeNoGmt = time.replace(/ GMT.*$/, "")
         const dateTime = DateTime
             .fromFormat(timeNoGmt, "ccc t", {
                 zone: 'GMT'
@@ -53,15 +53,18 @@ const getGameDataFromGameHtml = (node: Cheerio<Element>): Omit<GameData, 'state'
 
     const [_, awayTeamNameAndRecord, __, awayTeamPoints] = cheerio(awayTeamLi).find('span').map((i, el) => cheerio(el).text().trim()).toArray()
     const [___, homeTeamNameAndRecord, ____, homeTeamPoints] = cheerio(homeTeamLi).find('span').map((i, el) => cheerio(el).text().trim()).toArray()
+    const nameRecordRegex = /^([0-9a-zA-Z]+)([0-9]{1,2}-[0-9]{1,2})$/
+    const awayNameRecord = nameRecordRegex.exec(awayTeamNameAndRecord) || []
+    const homeNameRecord = nameRecordRegex.exec(homeTeamNameAndRecord) || []
     return {
         awayTeam: {
-            name: awayTeamNameAndRecord.replace(/[0-9]+-[0-9]+/, ''),
-            record: awayTeamNameAndRecord.replace(/[a-zA-Z]+/, ''),
+            name: awayNameRecord[1],
+            record: awayNameRecord[2],
             points: Number(awayTeamPoints?.length ? awayTeamPoints : 0)
         },
         homeTeam: {
-            name: homeTeamNameAndRecord.replace(/[0-9]+-[0-9]+/, ''),
-            record: homeTeamNameAndRecord.replace(/[a-zA-Z]+/, ''),
+            name: homeNameRecord[1],
+            record: homeNameRecord[2],
             points: Number(homeTeamPoints?.length ? homeTeamPoints : 0)
         },
         time
@@ -73,9 +76,8 @@ export const main = async (req: Request, res: Response): Promise<unknown> => {
         DateTime.fromFormat(req.query?.date as string, 'yyyy-MM-dd') :
         DateTime.fromJSDate(new Date())
     const url = getUrl(dateTime)
-    const response = await axios.get(url)
-    const $ = cheerio.load(response.data);
-    const html = $.html()
+    const response = await got(url)
+    const $ = cheerio.load(response.body);
     const items: GameData[] = [
         ...$('h3:contains("Live")')
             .parent()
